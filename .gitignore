@@ -1,0 +1,3 @@
+# Build artifacts; only scripts, PKGBUILDs and docs belong in git.
+out/
+work/

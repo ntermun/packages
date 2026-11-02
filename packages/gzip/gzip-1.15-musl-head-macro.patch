@@ -1,0 +1,66 @@
+diff -ruN a/deflate.c b/deflate.c
+--- a/deflate.c	2026-07-25 22:39:51.000000000 +0000
++++ b/deflate.c	2026-11-02 14:11:15.952037240 +0000
+@@ -290,8 +290,8 @@
+  */
+ #define INSERT_STRING(s, match_head) \
+    (UPDATE_HASH(ins_h, window[(s) + MIN_MATCH-1]), \
+-    prev[(s) & WMASK] = match_head = head[ins_h], \
+-    head[ins_h] = (s))
++    prev[(s) & WMASK] = match_head = gz_head[ins_h], \
++    gz_head[ins_h] = (s))
+ 
+ /* ===========================================================================
+  * Initialize the "longest match" routines for a new file
+@@ -306,9 +306,9 @@
+ 
+     /* Initialize the hash table. */
+ #if defined MAXSEG_64K && HASH_BITS == 15
+-    for (j = 0;  j < HASH_SIZE; j++) head[j] = NIL;
++    for (j = 0;  j < HASH_SIZE; j++) gz_head[j] = NIL;
+ #else
+-    memzero((char*)head, HASH_SIZE*sizeof(*head));
++    memzero((char*)gz_head, HASH_SIZE*sizeof(*gz_head));
+ #endif
+     /* prev will be initialized on the fly */
+ 
+@@ -555,8 +555,8 @@
+         block_start -= (long) WSIZE;
+ 
+         for (n = 0; n < HASH_SIZE; n++) {
+-            m = head[n];
+-            head[n] = (Pos)(m >= WSIZE ? m-WSIZE : NIL);
++            m = gz_head[n];
++            gz_head[n] = (Pos)(m >= WSIZE ? m-WSIZE : NIL);
+         }
+         for (n = 0; n < WSIZE; n++) {
+             m = prev[n];
+diff -ruN a/gzip.h b/gzip.h
+--- a/gzip.h	2026-09-19 06:35:07.000000000 +0000
++++ b/gzip.h	2026-11-02 14:11:15.944037198 +0000
+@@ -117,11 +117,11 @@
+ #define tab_suffix window
+ #ifndef MAXSEG_64K
+ #  define tab_prefix prev    /* hash link (see deflate.c) */
+-#  define head (prev+WSIZE)  /* hash head (see deflate.c) */
++#  define gz_head (prev+WSIZE)  /* hash head (see deflate.c) */
+    EXTERN(ush, tab_prefix);  /* prefix code (see unlzw.c) */
+ #else
+ #  define tab_prefix0 prev
+-#  define head tab_prefix1
++#  define gz_head tab_prefix1
+    EXTERN(ush, tab_prefix0); /* prefix for even codes */
+    EXTERN(ush, tab_prefix1); /* prefix for odd  codes */
+ #endif
+diff -ruN a/unlzh.c b/unlzh.c
+--- a/unlzh.c	2026-08-31 10:49:36.000000000 +0000
++++ b/unlzh.c	2026-11-02 14:11:15.960037282 +0000
+@@ -61,7 +61,7 @@
+ /* static ush left[2 * NC - 1]; */
+ /* static ush right[2 * NC - 1]; */
+ #define left  prev
+-#define right head
++#define right gz_head
+ #if NC > (1<<(BITS-2))
+     error cannot overlay left+right and prev
+ #endif

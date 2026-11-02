@@ -1,0 +1,31 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh bash
+pkgname=bash
+pkgver=5.3
+pkgrel=1
+pkgdesc="The GNU Bourne Again shell (static musl)"
+url="https://www.gnu.org/software/bash/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://ftp.gnu.org/gnu/bash/bash-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls \
+		--disable-shared --enable-static \
+		--without-bash-malloc \
+		--enable-static-link
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# /bin/sh is provided by this package on the device.
+	ln -sf bash "$pkgdir/usr/bin/sh"
+}

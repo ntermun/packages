@@ -1,0 +1,66 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh pacman
+#
+# pacman 7.x builds with meson.  libalpm needs libarchive (package reader),
+# libcurl (downloads) and libcrypto (checksums); gpgme and seccomp are off,
+# i18n is off (no gettext in the static userland).
+#
+# Install layout: the device runs pacman with --root=<files> and this package
+# installs to /usr, so binaries land in <files>/usr/bin (already in PATH).
+pkgname=pacman
+pkgver=7.1.0
+pkgrel=1
+pkgdesc="A library-based package manager (static musl)"
+url="https://archlinux.org/pacman/"
+arch=(aarch64)
+license=(GPL-2.0-or-later)
+depends=(bash libarchive curl openssl ncurses)
+source=("https://sources.archlinux.org/other/pacman/pacman-${pkgver}.tar.xz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+
+	cat > cross.ini <<EOF
+[binaries]
+c = '$CC'
+ar = '$AR'
+strip = '$STRIP'
+pkg-config = 'pkg-config'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
+
+[properties]
+sys_root = '$STAGE'
+needs_exe_wrapper = true
+
+[built-in options]
+c_args = ['-O2', '-fno-pie']
+c_link_args = ['-static']
+EOF
+
+	meson setup build \
+		--cross-file cross.ini \
+		--buildtype=release \
+		--prefix=/usr --sysconfdir=/etc --localstatedir=/var \
+		-Ddoc=disabled -Ddoxygen=disabled \
+		-Dgpgme=disabled -Dcurl=enabled -Dcrypto=openssl \
+		-Dfile-seccomp=disabled -Di18n=false \
+		-Dbuildstatic=true -Dstrip=false
+	ninja -C build
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	DESTDIR="$pkgdir" ninja -C build install
+	# Our own configuration: the upstream one points at Arch mirrors and
+	# enables signature checking, neither of which exists on the device.
+	install -Dm644 "$startdir/packages/pacman/pacman.conf" \
+		"$pkgdir/etc/pacman.conf"
+	# /bin/sh for install scriptlets (the root has usr/bin/sh from bash).
+	ln -sf usr/bin "$pkgdir/bin"
+}

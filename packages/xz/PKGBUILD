@@ -1,0 +1,31 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh xz
+#
+# Provides the xz/lzma tools and liblzma.a (libarchive, tar, curl).
+pkgname=xz
+pkgver=5.8.4
+pkgrel=1
+pkgdesc="XZ Utils: xz/lzma compression and liblzma (static musl)"
+url="https://tukaani.org/xz/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://github.com/tukaani-project/xz/releases/download/v${pkgver}/xz-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/xz-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls --disable-doc \
+		--disable-shared --enable-static
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/xz-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# keep the docs small: drop html/pdf if the build installed any
+	rm -rf "$pkgdir/usr/share/doc"
+}

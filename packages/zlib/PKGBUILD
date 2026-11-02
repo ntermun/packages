@@ -1,0 +1,27 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh zlib
+#
+# libz.a is staged for libarchive/curl/openssh; the package itself only
+# carries the shared-free static library plus headers.
+pkgname=zlib
+pkgver=1.3.2
+pkgrel=1
+pkgdesc="Compression library (static musl)"
+url="https://zlib.net/"
+arch=(aarch64)
+license=(Zlib)
+depends=()
+source=("https://zlib.net/zlib-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure --prefix=/usr --static
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# the man pages are tiny and useful; the build installs them already
+}

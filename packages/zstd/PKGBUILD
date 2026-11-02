@@ -1,0 +1,34 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh zstd
+pkgname=zstd
+pkgver=1.5.7
+pkgrel=1
+pkgdesc="Zstandard compressor and libzstd (static musl)"
+url="https://facebook.github.io/zstd/"
+arch=(aarch64)
+license=(BSD GPL-2.0-only)
+depends=()
+source=("https://github.com/facebook/zstd/releases/download/v${pkgver}/zstd-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make -j"$JOBS" CC="$CC" AR="$AR" \
+		CFLAGS="$CFLAGS -fPIC" LDFLAGS="$LDFLAGS" \
+		zstd-release
+	make -j"$JOBS" CC="$CC" AR="$AR" \
+		CFLAGS="$CFLAGS -fPIC" LDFLAGS="$LDFLAGS" -C lib libzstd.a
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	install -Dm755 programs/zstd "$pkgdir/usr/bin/zstd"
+	ln -sf zstd "$pkgdir/usr/bin/unzstd"
+	ln -sf zstd "$pkgdir/usr/bin/zstdcat"
+	ln -sf zstd "$pkgdir/usr/bin/zstdmt"
+	install -Dm644 lib/zstd.h "$pkgdir/usr/include/zstd.h"
+	install -Dm644 lib/zstd_errors.h "$pkgdir/usr/include/zstd_errors.h"
+	install -Dm644 lib/zdict.h "$pkgdir/usr/include/zdict.h"
+	install -Dm644 lib/libzstd.a "$pkgdir/usr/lib/libzstd.a"
+	install -Dm644 LICENSE "$pkgdir/usr/share/licenses/zstd/LICENSE"
+}

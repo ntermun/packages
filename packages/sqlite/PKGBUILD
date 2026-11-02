@@ -1,0 +1,31 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh sqlite
+#
+# libsqlite3.a is what libalpm uses for its local database; the sqlite3
+# shell is handy for debugging but not required.
+pkgname=sqlite
+pkgver=3.54.1
+pkgrel=1
+pkgdesc="SQL database engine and sqlite3 shell (static musl)"
+url="https://sqlite.org/"
+arch=(aarch64)
+license=(PublicDomain)
+depends=()
+source=("https://sqlite.org/2026/sqlite-autoconf-3540100.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/sqlite-autoconf-3540100"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-shared --enable-static \
+		--static-cli-shell \
+		--enable-threadsafe --enable-fts5
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/sqlite-autoconf-3540100"
+	make DESTDIR="$pkgdir" install
+}

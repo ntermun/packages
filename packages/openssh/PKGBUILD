@@ -1,0 +1,47 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh openssh
+#
+# Client side only: ssh, scp, sftp, ssh-keygen, ssh-agent.  The daemon lives
+# in the openssh-server package (same sources, built twice so each package
+# stays self-contained).
+#
+# --with-sandbox=no: seccomp sandboxes assume a normal Linux userland and
+# break inside the Android app sandbox.  --without-pam: no PAM on device.
+pkgname=openssh
+pkgver=10.6p1
+pkgrel=1
+pkgdesc="OpenSSH client (static musl, no PAM)"
+url="https://www.openssh.com/"
+arch=(aarch64)
+license=(BSD)
+depends=(openssl zlib)
+source=("https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/openssh-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--sysconfdir=/etc/ssh \
+		--with-ssl-dir="$STAGE/usr" \
+		--with-zlib="$STAGE/usr" \
+		--with-privsep-path=/var/empty \
+		--without-pam --without-selinux \
+		--with-sandbox=no \
+		--disable-etc-default-login \
+		--disable-strip \
+		--with-ldflags="$LDFLAGS" \
+		--with-cflags="$CFLAGS"
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/openssh-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# Drop everything that belongs to the daemon package.
+	rm -rf "$pkgdir/usr/sbin" "$pkgdir/usr/libexec"
+	rm -f "$pkgdir/etc/ssh/sshd_config" "$pkgdir/etc/ssh/moduli"
+	# ssh-copy-id needs a POSIX sh with dirname/ssh; both are in the repo.
+	sed -i '1s|.*|#!/usr/bin/sh|' "$pkgdir/usr/bin/ssh-copy-id" 2>/dev/null || true
+}

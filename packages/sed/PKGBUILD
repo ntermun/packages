@@ -1,0 +1,28 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh sed
+pkgname=sed
+pkgver=4.10
+pkgrel=1
+pkgdesc="GNU sed (static musl)"
+url="https://www.gnu.org/software/sed/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://ftp.gnu.org/gnu/sed/sed-${pkgver}.tar.xz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls \
+		--disable-shared --enable-static \
+		--without-selinux
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+}

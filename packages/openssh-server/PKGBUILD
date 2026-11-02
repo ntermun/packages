@@ -1,0 +1,52 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh openssh-server
+#
+# The daemon half of OpenSSH: sshd, its privilege-separation helpers
+# (sshd-session/sshd-auth/sshd-sftp), the sftp subsystem, ssh-keysign and a
+# default sshd_config.  Host keys are generated on first start by
+# "ssh-keygen -A" (see the README), they are not shipped.
+#
+# sshd runs as the app user on an unprivileged port (8022 by default), so
+# there is no root login and no setuid: public key auth only.
+pkgname=openssh-server
+pkgver=10.6p1
+pkgrel=1
+pkgdesc="OpenSSH server (sshd, static musl, no PAM)"
+url="https://www.openssh.com/"
+arch=(aarch64)
+license=(BSD)
+depends=(openssl zlib)
+source=("https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/openssh-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--sysconfdir=/etc/ssh \
+		--with-ssl-dir="$STAGE/usr" \
+		--with-zlib="$STAGE/usr" \
+		--with-privsep-path=/var/empty \
+		--with-pid-dir=/var/run \
+		--without-pam --without-selinux \
+		--with-sandbox=no \
+		--disable-etc-default-login \
+		--disable-strip \
+		--with-ldflags="$LDFLAGS" \
+		--with-cflags="$CFLAGS"
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/openssh-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# Drop the client side.
+	rm -rf "$pkgdir/usr/bin" "$pkgdir/usr/share/man"
+	rm -f "$pkgdir/etc/ssh/ssh_config"
+
+	install -d "$pkgdir/var/empty" "$pkgdir/var/run"
+	chmod 0755 "$pkgdir/var/empty"
+
+	install -Dm644 "$startdir/sshd_config" "$pkgdir/etc/ssh/sshd_config"
+}

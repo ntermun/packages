@@ -1,0 +1,42 @@
+# sshd_config for nnn.ntermun (Android app user, static musl userland).
+#
+# sshd runs unprivileged: the app cannot bind port 22, cannot setuid and has
+# no PAM.  Log in with a public key as the app user:
+#
+#   ssh -p 8022 -i ~/.ssh/id_ed25519 u0_a123@phone
+#
+# Generate the host keys once after installing the package:
+#   /data/data/nnn.ntermun/files/usr/bin/ssh-keygen -A -f /data/data/nnn.ntermun/files
+#
+# and put your public key into <files>/home/.ssh/authorized_keys.
+
+Port 8022
+AddressFamily any
+ListenAddress 0.0.0.0
+
+PidFile /var/run/sshd.pid
+HostKey /etc/ssh/ssh_host_ed25519_key
+HostKey /etc/ssh/ssh_host_rsa_key
+
+# No root, no passwords: only keys of the app user.
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+UsePAM no
+
+AuthorizedKeysFile .ssh/authorized_keys
+StrictModes no
+
+X11Forwarding no
+AllowAgentForwarding yes
+AllowTcpForwarding yes
+GatewayPorts no
+PrintMotd no
+PrintLastLog no
+TCPKeepAlive yes
+ClientAliveInterval 60
+ClientAliveCountMax 3
+
+Subsystem sftp /usr/libexec/sshd-sftp

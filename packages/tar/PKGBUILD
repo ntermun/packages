@@ -1,0 +1,28 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh tar
+pkgname=tar
+pkgver=1.35
+pkgrel=1
+pkgdesc="GNU tar (static musl, zstd/gzip/xz support)"
+url="https://www.gnu.org/software/tar/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://ftp.gnu.org/gnu/tar/tar-${pkgver}.tar.xz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls \
+		--disable-shared --enable-static \
+		--without-selinux --without-posix-acls
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+}

@@ -1,0 +1,37 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh libarchive
+#
+# libarchive is libalpm's package reader: it must understand .tar.zst,
+# .tar.xz, .tar.gz and .tar.bz2, hence the zlib/bzip2/xz/zstd backends.
+# No XML, no OpenSSL, no nettle: signatures are pacman's job, not ours.
+pkgname=libarchive
+pkgver=3.8.11
+pkgrel=1
+pkgdesc="Multi-format archive and compression library (static musl)"
+url="https://www.libarchive.org/"
+arch=(aarch64)
+license=(BSD-2-Clause)
+depends=(zlib bzip2 xz zstd)
+source=("https://github.com/libarchive/libarchive/releases/download/v${pkgver}/libarchive-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/libarchive-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-shared --enable-static \
+		--without-xml2 --without-expat \
+		--without-openssl --without-nettle --without-lz4 \
+		--with-zlib --with-bz2lib --with-lzma --with-zstd \
+		--disable-bsdtar --disable-bsdcpio --disable-bsdunzip \
+		--disable-acl --disable-xattr \
+		--disable-nls
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/libarchive-$pkgver"
+	make DESTDIR="$pkgdir" install
+	rm -rf "$pkgdir/usr/share/man"
+}

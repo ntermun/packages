@@ -1,0 +1,30 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh coreutils
+pkgname=coreutils
+pkgver=9.12
+pkgrel=1
+pkgdesc="GNU core utilities (static musl, single binary with symlinks)"
+url="https://www.gnu.org/software/coreutils/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://ftp.gnu.org/gnu/coreutils/coreutils-${pkgver}.tar.xz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls \
+		--disable-shared --enable-static \
+		--enable-single-binary=symlinks \
+		--enable-no-install-program=stdbuf,su,hostname \
+		--without-selinux --disable-acl --disable-xattr
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+}

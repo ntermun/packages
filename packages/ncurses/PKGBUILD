@@ -1,0 +1,40 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh ncurses
+#
+# Wide-character curses: pacman's UI needs libncursesw.a.  Everything else
+# (terminfo, tools) is installed as well so ncurses-based programs built
+# later can find their terminal descriptions.
+pkgname=ncurses
+pkgver=6.6
+pkgrel=1
+pkgdesc="System V Release 4 curses library (wide, static musl)"
+url="https://invisible-island.net/ncurses/"
+arch=(aarch64)
+license=(MIT)
+depends=()
+source=("https://ftp.gnu.org/gnu/ncurses/ncurses-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/ncurses-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--without-shared --with-normal \
+		--without-debug --without-ada --without-tests \
+		--without-manpages --without-profile \
+		--enable-widec --enable-pc-files \
+		--with-pkg-config-libdir=/usr/lib/pkgconfig \
+		--with-termlib --with-default-terminfo-dir=/usr/share/terminfo \
+		--with-terminfo-dirs=/usr/share/terminfo \
+		--disable-stripping
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/ncurses-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# The non-wide library is a symlink farm to the wide one; keep only the
+	# real files, they are what the linker wants.
+	find "$pkgdir" -xtype l -delete
+}

@@ -1,0 +1,28 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh grep
+pkgname=grep
+pkgver=3.12
+pkgrel=1
+pkgdesc="GNU grep (static musl)"
+url="https://www.gnu.org/software/grep/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://ftp.gnu.org/gnu/grep/grep-${pkgver}.tar.xz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls \
+		--disable-shared --enable-static \
+		--without-selinux
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+}

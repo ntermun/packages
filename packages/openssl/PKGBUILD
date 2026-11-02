@@ -1,0 +1,33 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh openssl
+#
+# no-shared gives libcrypto.a/libssl.a.  They are staged so openssh can link
+# against them; only the openssl binary itself is needed at runtime.
+pkgname=openssl
+pkgver=3.5.1
+pkgrel=1
+pkgdesc="OpenSSL toolkit and static libcrypto/libssl (musl)"
+url="https://www.openssl.org/"
+arch=(aarch64)
+license=(Apache-2.0)
+depends=()
+source=("https://www.openssl.org/source/openssl-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./Configure linux-aarch64 \
+		--prefix=/usr \
+		--openssldir=/etc/ssl \
+		--libdir=lib \
+		no-shared no-tests no-docs no-legacy \
+		-O2 -fno-pie
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" MANDIR=/usr/share/man install_sw
+	mkdir -p "$pkgdir/etc/ssl"
+	cp -f apps/openssl.cnf "$pkgdir/etc/ssl/openssl.cnf"
+}

@@ -1,0 +1,148 @@
+name: repo
+
+# Builds the aarch64-linux-musl packages, indexes them with mkrepo.sh and
+# publishes the result to ntermun/main-repo (branch gh-pages, directory
+# aarch64/), which GitHub Pages serves as
+#   https://ntermun.github.io/main-repo/aarch64
+#
+# Required secret: MAIN_REPO_TOKEN -- a token with write access to
+# ntermun/main-repo.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'build-pkg.sh'
+      - 'makepkg.sh'
+      - 'musl-env.sh'
+      - 'mkrepo.sh'
+      - 'pacman.conf'
+      - 'packages/**'
+      - '.github/workflows/repo.yml'
+  pull_request:
+    paths:
+      - 'build-pkg.sh'
+      - 'makepkg.sh'
+      - 'musl-env.sh'
+      - 'mkrepo.sh'
+      - 'pacman.conf'
+      - 'packages/**'
+      - '.github/workflows/repo.yml'
+  workflow_dispatch:
+  schedule:
+    # Weekly rebuild, so upstream security fixes get picked up.
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache musl.cc toolchain
+        id: toolchain-cache
+        uses: actions/cache@v4
+        with:
+          path: .toolchain
+          key: musl-cross-aarch64-v1
+
+      - name: Download musl.cc toolchain
+        if: steps.toolchain-cache.outputs.cache-hit != 'true'
+        run: |
+          set -eux
+          mkdir -p .toolchain
+          curl -fsSL --retry 3 --retry-delay 5 \
+            -o "$RUNNER_TEMP/aarch64-linux-musl-cross.tgz" \
+            https://musl.cc/aarch64-linux-musl-cross.tgz
+          tar -xzf "$RUNNER_TEMP/aarch64-linux-musl-cross.tgz" \
+            -C .toolchain --strip-components=1
+          .toolchain/bin/aarch64-linux-musl-gcc --version | head -n1
+
+      - name: Cache built packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            repo/work/src-cache
+            repo/out
+          key: pkgs-${{ runner.os }}-${{ hashFiles('packages/**/PKGBUILD', 'makepkg.sh', 'musl-env.sh') }}
+          restore-keys: |
+            pkgs-${{ runner.os }}-
+
+      - name: Install build helpers
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq meson ninja-build pkg-config
+
+      - name: Build packages
+        run: |
+          export MUSL_CROSS="$PWD/.toolchain"
+          ./repo/makepkg.sh
+
+      - name: Build repository database
+        run: |
+          ./repo/mkrepo.sh
+          echo "--- db ---"
+          tar -tzf repo/out/aarch64/ntermun.db.tar.gz | head -40
+          echo "--- packages ---"
+          ls -lh repo/out/aarch64
+
+      - name: Upload repository artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ntermun-repo
+          path: repo/out/
+          retention-days: 14
+
+  publish:
+    name: publish to main-repo
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download repository artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ntermun-repo
+          path: out
+
+      - name: Push out/ to ntermun/main-repo (gh-pages)
+        env:
+          TOKEN: ${{ secrets.MAIN_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error::secret MAIN_REPO_TOKEN is not set" >&2
+            exit 1
+          fi
+
+          remote="https://x-access-token:${TOKEN}@github.com/ntermun/main-repo.git"
+          rm -rf pages
+
+          if ! git clone --quiet --depth 1 --branch gh-pages "$remote" pages 2>/dev/null; then
+            echo "gh-pages does not exist yet, creating an orphan branch"
+            git clone --quiet "$remote" pages
+            git -C pages checkout --orphan gh-pages
+            git -C pages rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          mkdir -p pages/aarch64
+          rsync -a --delete out/aarch64/ pages/aarch64/
+
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "main-repo is already up to date"
+            exit 0
+          fi
+          git commit -m "repo: rebuild $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin gh-pages

@@ -1,0 +1,29 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh make
+pkgname=make
+pkgver=4.4.1
+pkgrel=1
+pkgdesc="GNU make (static musl)"
+url="https://www.gnu.org/software/make/"
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=()
+source=("https://ftp.gnu.org/gnu/make/make-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/$pkgname-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-nls \
+		--disable-shared --enable-static
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/$pkgname-$pkgver"
+	make DESTDIR="$pkgdir" install
+	# "gmake" is what portable scripts look for first.
+	ln -sf make "$pkgdir/usr/bin/gmake"
+}

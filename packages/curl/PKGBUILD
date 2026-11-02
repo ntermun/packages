@@ -1,0 +1,42 @@
+# Maintainer: ntermun
+# Static aarch64/musl build.  Build with: repo/makepkg.sh curl
+#
+# pacman links libcurl.a for HTTP(S) transfers.  Only https/http are needed,
+# so every other protocol is compiled out; the CA bundle path is the one the
+# device uses (/etc/ssl/certs/ca-certificates.crt inside the pacman root).
+pkgname=curl
+pkgver=8.23.0
+pkgrel=1
+pkgdesc="Command line tool and library for URL transfers (static musl)"
+url="https://curl.se/"
+arch=(aarch64)
+license=(MIT)
+depends=(openssl zlib)
+source=("https://curl.se/download/curl-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "$srcdir/curl-$pkgver"
+	./configure \
+		--host="$CHOST" --build="$CBUILD" \
+		--prefix=/usr \
+		--disable-shared --enable-static \
+		--with-openssl="$STAGE/usr" \
+		--with-zlib="$STAGE/usr" \
+		--with-ca-bundle=/etc/ssl/certs/ca-certificates.crt \
+		--without-libpsl --without-brotli --without-libidn2 \
+		--without-nghttp2 --without-zstd \
+		--disable-ldap --disable-ldaps --disable-rtsp \
+		--disable-dict --disable-telnet --disable-tftp \
+		--disable-pop3 --disable-imap --disable-smb \
+		--disable-smtp --disable-gopher --disable-mqtt \
+		--disable-manual --disable-docs --enable-ipv6 \
+		--disable-nls
+	make -j"$JOBS"
+}
+
+package() {
+	cd "$srcdir/curl-$pkgver"
+	make DESTDIR="$pkgdir" install
+	rm -rf "$pkgdir/usr/share/man" "$pkgdir/usr/share/doc"
+}
