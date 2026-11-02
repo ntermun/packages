@@ -156,7 +156,13 @@ write_entry() {
 	[[ -n $desc ]] || desc=$(pkg_field "$f" desc)
 	arch=$(pkg_field "$f" arch)
 	isize=$(pkg_field "$f" size)
-	deps=$(pkg_field_all "$f" depend)
+	# .PKGINFO uses "depend"; accept the plural spelling from hand-made trees.
+	deps=$(
+		{
+			pkg_field_all "$f" depend
+			pkg_field_all "$f" depends
+		} | awk '!seen[$0]++'
+	)
 
 	csize=$(stat -c %s "$f")
 	md5=$(md5sum "$f" | awk '{ print $1 }')

@@ -156,6 +156,12 @@ PKG_SIZE=$size PKG_ARCH=$arch PKG_FULLVER=$fullver awk '
 		if (key == "arch") { print "arch = " arch; have_arch = 1; next }
 		if (key == "pkgver") { print "pkgver = " fullver; have_ver = 1; next }
 		if (key == "pkgrel") { next }
+		if (key == "depends") {
+			v = line
+			sub(/^[^=]*=[[:space:]]*/, "", v)
+			print "depend = " v
+			next
+		}
 		if (key == "desc") {
 			if (have_desc) next
 			v = line
