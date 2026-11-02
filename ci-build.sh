@@ -93,6 +93,8 @@ export PKG_CONFIG_PATH="$STAGE/usr/lib/pkgconfig:$STAGE/usr/lib64/pkgconfig:${PK
 export PKG_CONFIG_LIBDIR="$PKG_CONFIG_PATH"
 export OPENSSL_STAGE=${OPENSSL_STAGE:-$STAGE/usr}
 export MAKEFLAGS=${MAKEFLAGS:--j$JOBS}
+# Some GNU packages try to rebuild info pages; the runner may lack makeinfo.
+export MAKEINFO=${MAKEINFO:-true}
 export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(date +%s)}
 export LC_ALL=C
 

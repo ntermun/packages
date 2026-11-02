@@ -7,7 +7,7 @@
 # zlib is not shipped with the musl.cc toolchain, so it is built here privately.
 
 pkgname=openssh
-pkgver=10.0p2
+pkgver=10.6p1
 pkgrel=1
 pkgdesc='Portable OpenSSH client and server (static, musl)'
 arch=('aarch64')
@@ -17,7 +17,7 @@ depends=('openssl')
 makedepends=('aarch64-linux-musl-gcc')
 source=(
 	"https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${pkgver}.tar.gz"
-	"https://zlib.net/zlib-1.3.1.tar.gz"
+	"https://zlib.net/fossils/zlib-1.3.1.tar.gz"
 )
 sha256sums=('SKIP' 'SKIP')
 
