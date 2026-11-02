@@ -1,0 +1,58 @@
+# Maintainer: nterminal <d0m_1k@mail.ru>
+# Static aarch64-linux-musl build.  Built by ../../ci-build.sh (mini-makepkg),
+# not by makepkg, and installed under /usr on the target.
+#
+# openssh links against the static OpenSSL built by packages/openssl, which
+# ci-build.sh stages in $STAGE/usr and exposes as $OPENSSL_STAGE.
+# zlib is not shipped with the musl.cc toolchain, so it is built here privately.
+
+pkgname=openssh
+pkgver=10.0p2
+pkgrel=1
+pkgdesc='Portable OpenSSH client and server (static, musl)'
+arch=('aarch64')
+url='https://www.openssh.com/portable.html'
+license=('ISC')
+depends=('openssl')
+makedepends=('aarch64-linux-musl-gcc')
+source=(
+	"https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${pkgver}.tar.gz"
+	"https://zlib.net/zlib-1.3.1.tar.gz"
+)
+sha256sums=('SKIP' 'SKIP')
+
+_openssl_dir=${OPENSSL_STAGE:-/usr}
+_zlib_ver=1.3.1
+
+build() {
+	# Private static zlib.
+	cd "${srcdir}/zlib-${_zlib_ver}"
+	./configure --static --prefix="${srcdir}/zlib-stage"
+	make -j"${JOBS}"
+	make install
+
+	cd "${srcdir}/openssh-${pkgver}"
+	./configure \
+		--host="${CROSS}" \
+		--prefix=/usr \
+		--sysconfdir=/etc/ssh \
+		--with-ssl-dir="${_openssl_dir}" \
+		--with-zlib="${srcdir}/zlib-stage" \
+		--with-privsep-path=/var/empty \
+		--with-pid-dir=/run \
+		--with-default-path=/usr/bin \
+		--disable-strip \
+		CFLAGS="${CFLAGS}" \
+		CPPFLAGS="${CPPFLAGS} -I${srcdir}/zlib-stage/include" \
+		LDFLAGS="${LDFLAGS} -L${srcdir}/zlib-stage/lib"
+	make -j"${JOBS}"
+}
+
+package() {
+	cd "${srcdir}/openssh-${pkgver}"
+	make DESTDIR="${pkgdir}" install
+	chmod 755 "${pkgdir}"/usr/bin/* "${pkgdir}"/usr/sbin/*
+	# Host keys are generated on the device (ssh-keygen -A), never shipped.
+	rm -f "${pkgdir}"/etc/ssh/ssh_host_*
+	rm -rf "${pkgdir}"/usr/share/man
+}

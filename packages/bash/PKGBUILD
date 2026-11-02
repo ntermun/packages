@@ -1,0 +1,35 @@
+# Maintainer: nterminal <d0m_1k@mail.ru>
+# Static aarch64-linux-musl build.  Built by ../../ci-build.sh (mini-makepkg),
+# not by makepkg, and installed under /usr on the target.
+
+pkgname=bash
+pkgver=5.2.37
+pkgrel=1
+pkgdesc='GNU Bourne-Again SHell (static, musl)'
+arch=('aarch64')
+url='https://www.gnu.org/software/bash/'
+license=('GPL-3.0-or-later')
+depends=()
+makedepends=('aarch64-linux-musl-gcc')
+source=("https://ftp.gnu.org/gnu/bash/bash-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+	cd "${srcdir}/bash-${pkgver}"
+	./configure \
+		--host="${CROSS}" \
+		--prefix=/usr \
+		--disable-nls \
+		--without-bash-malloc \
+		--enable-static-link \
+		CFLAGS="${CFLAGS}" \
+		LDFLAGS="${LDFLAGS}"
+	make -j"${JOBS}"
+}
+
+package() {
+	cd "${srcdir}/bash-${pkgver}"
+	make DESTDIR="${pkgdir}" install
+	chmod 755 "${pkgdir}"/usr/bin/*
+	rm -rf "${pkgdir}"/usr/share/info "${pkgdir}"/usr/share/locale
+}

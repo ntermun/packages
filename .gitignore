@@ -1,0 +1,5 @@
+out/
+.build/
+.toolchain/
+*.pkg.tar.zst
+*.pkg.tar.zst.tmp
